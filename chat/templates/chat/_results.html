@@ -1,0 +1,23 @@
+{% if results %}
+<div class="space-y-4">
+    {% for res in results %}
+    <div class="bg-white p-5 rounded-lg border border-blue-100 shadow-sm">
+        {% if res.source != "AI Generated" %}
+        <div class="text-xs font-mono text-gray-400 mb-2 uppercase tracking-wide">Источник: {{ res.source }}</div>
+        {% else %}
+        <div class="text-xs font-bold text-blue-600 mb-2 flex items-center">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            Ответ AI (RAG)
+        </div>
+        {% endif %}
+
+        <!-- whitespace-pre-wrap сохраняет переносы строк от LLM -->
+        <p class="text-gray-800 leading-relaxed whitespace-pre-wrap">{{ res.content }}</p>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center text-gray-500 mt-10">
+    <p>Ничего не найдено.</p>
+</div>
+{% endif %}
