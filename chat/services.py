@@ -6,6 +6,10 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 import requests
+from .vector_store_cache import load_vector_store, create_vector_store
+from .cache import answers_cache
+import re
+
 
 # Глобальная переменная для хранения базы в памяти
 _vector_db = None
@@ -62,44 +66,97 @@ def create_vector_store():
     print(f"[УСПЕХ] База создана и сохранена в {DB_DIR}")
 
 
-def generate_rag_answer(query: str):
+def generate_rag_answer(query: str) -> str:
+    """
+    Генерирует ответ на вопрос через RAG с кэшированием
+    """
+    # 1. Проверяем кэш
+    cached_answer = answers_cache.get(query)
+    if cached_answer:
+        print(f" Ответ найден в кэше: {query[:50]}...")
+        return cached_answer
+
+    # 2. Загружаем базу (из кэша в памяти)
     db = load_vector_store()
     if not db:
         return "Ошибка: База знаний не загружена."
 
-    # 1. Поиск (k=1 для максимальной скорости)
-    docs = db.similarity_search(query, k=3)
+    # 3. Поиск контекста
+    docs = db.similarity_search(query, k=6)
+
+    # 👇 ДОБАВЬ ЭТО ДЛЯ ОТЛАДКИ:
+    print(f"\n🔍 Запрос: {query}")
+    print(f"📄 Найдено документов: {len(docs)}")
+    for i, doc in enumerate(docs):
+        print(f"📝 Контекст {i+1}:\n{doc.page_content[:200]}...\n")
+    # 👆 КОНЕЦ ОТЛАДКИ
+
     context_text = "\n\n".join([d.page_content for d in docs])
 
     if not context_text.strip():
-        return "Ничего не найдено."
+        print("⚠️ КОНТЕКСТ ПУСТОЙ!")
+        return "Информация не найдена в документации."
 
-    prompt = f"""Ты ассистент по ML-библиотекам. 
-                1. Сначала проверь КОНТЕКСТ ниже. Если в нём есть ответ, используй его.
-                2. Если контекст неполный или отсутствует, ответь кратко из своих знаний, но отметь: "(На основе общих знаний)".
-                3. Отвечай четко, без воды.
-                
+    # 4. Формируем промпт
+    prompt = f"""Ты эксперт по Machine Learning.
+                1. Прочитай КОНТЕКСТ и ответь на вопрос.
+                2. ВАЖНО: Названия библиотек и функций пиши ТОЛЬКО ЛАТИНИЦЕЙ: pandas, numpy, sklearn, TensorFlow, RandomForest, DataFrame, n_estimators.
+                3. Не смешивай кириллицу и латиницу в одном слове.
+                4. Отвечай четко и по делу.
+            
                 Контекст: {context_text}
+            
                 Вопрос: {query}
+            
                 Ответ:"""
 
+    # 5. Запрос к Ollama
     try:
-        # 2. Прямой вызов Ollama с жесткими лимитами
         response = requests.post(
             "http://localhost:11434/api/generate",
             json={
-                "model": "llama3.2:3b",  # Или твоя модель
+                "model": "llama3.2:3b",
                 "prompt": prompt,
                 "stream": False,
                 "options": {
-                    "temperature": 0.1,
-                    "num_predict": 500,  # Очень короткий ответ = очень быстро
+                    "temperature": 0.2,
+                    "num_predict": 700,
                     "top_p": 0.9,
+                    "repeat_penalty": 1.1,
                     "num_ctx": 2048
                 }
             },
             timeout=90
         )
-        return response.json().get("response", "Нет ответа")
+        response.raise_for_status()
+        result = response.json()
+        answer = result.get("response", "Нет ответа от модели")
+        answer = clean_answer(answer)  #
+        answers_cache.set(query, answer)
+        return answer
+
+    except requests.exceptions.Timeout:
+        return "Превышено время ожидания ответа."
     except Exception as e:
-        return f"Ошибка API: {e}"
+        return f"Ошибка API: {str(e)}"
+
+
+def clean_answer(answer: str) -> str:
+    """Чистит смешанные кириллица-латиница слова"""
+    # Словарь исправлений
+    fixes = {
+        r'[ПпРр]andas': 'pandas',
+        r'[НнHh]umpy': 'numpy',
+        r'[СсСс]klearn': 'sklearn',
+        r'[ТтTt]ensor[Ff]low': 'TensorFlow',
+        r'[КкKk]eras': 'Keras',
+        r'[ДдDd]ata[Ff]rame': 'DataFrame',
+        r'[НнNn]_estimators': 'n_estimators',
+        r'[РрRr]andom[Ff]orest': 'RandomForest',
+    }
+
+    cleaned = answer
+    for pattern, replacement in fixes.items():
+        cleaned = re.sub(pattern, replacement, cleaned)
+
+    return cleaned

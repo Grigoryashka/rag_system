@@ -78,6 +78,13 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 Протестировать этот вопрос
             </button>
+
+            <!-- Кнопка 3: Очистить кэш ответов -->
+            <button onclick="clearAnswersCache()"
+                    class="flex-1 sm:flex-none px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition flex items-center justify-center gap-2 shadow-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                Очистить кэш ответов
+            </button>
         </div>
 
         <!-- Лоадер -->
@@ -253,6 +260,32 @@
 
         html += '</div></div>';
         container.innerHTML = html;
+    }
+
+    async function clearAnswersCache() {
+        if (!confirm('Очистить кэш ответов? Все сохранённые ответы будут удалены.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/clear-cache/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                alert('✅ Кэш очищен!');
+            } else {
+                alert(' Ошибка: ' + data.message);
+            }
+        } catch (error) {
+            alert('❌ Ошибка сети: ' + error.message);
+        }
     }
 
     // Хелпер для CSRF токена (если еще нет в проекте)

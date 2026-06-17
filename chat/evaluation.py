@@ -67,13 +67,8 @@ def simple_manual_eval():
             "expected_keywords": ["pd.DataFrame", "DataFrame(", "pandas"],
         },
         {
-            "question": "n_estimators",
-            "expected_keywords": [
-                "дерев",  # деревья/деревьев — САМОЕ ВАЖНОЕ
-                "trees",  # английский вариант
-                "количеств",  # количество/число
-                "n_estimators"  # название параметра
-            ],
+            "question": "n_estimators в RandomForest",  # ✅ Уточнили!
+            "expected_keywords": ["дерев", "количеств", "n_estimators", "RandomForest"],
         }
     ]
 
