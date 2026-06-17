@@ -74,7 +74,14 @@ def generate_rag_answer(query: str):
     if not context_text.strip():
         return "Ничего не найдено."
 
-    prompt = f"Отвечай не очень кратко (хотя бы 3 предложения). Контекст: {context_text}. Вопрос: {query}. Ответ:"
+    prompt = f"""Ты ассистент по ML-библиотекам. 
+                1. Сначала проверь КОНТЕКСТ ниже. Если в нём есть ответ, используй его.
+                2. Если контекст неполный или отсутствует, ответь кратко из своих знаний, но отметь: "(На основе общих знаний)".
+                3. Отвечай четко, без воды.
+                
+                Контекст: {context_text}
+                Вопрос: {query}
+                Ответ:"""
 
     try:
         # 2. Прямой вызов Ollama с жесткими лимитами
@@ -87,10 +94,11 @@ def generate_rag_answer(query: str):
                 "options": {
                     "temperature": 0.1,
                     "num_predict": 500,  # Очень короткий ответ = очень быстро
-                    "top_p": 0.9
+                    "top_p": 0.9,
+                    "num_ctx": 2048
                 }
             },
-            timeout=60
+            timeout=90
         )
         return response.json().get("response", "Нет ответа")
     except Exception as e:

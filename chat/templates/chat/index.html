@@ -56,6 +56,222 @@
         </div>
     </div>
 
+    <!-- Панель оценки качества -->
+    <div class="border-t border-gray-200 mt-8 pt-6">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide">🧪 Тестирование системы</h3>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3 mb-4">
+            <!-- Кнопка 1: Стандартные тесты -->
+            <button id="eval-btn"
+                    onclick="runEvaluation()"
+                    class="flex-1 sm:flex-none px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition flex items-center justify-center gap-2 shadow-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Стандартные тесты
+            </button>
+
+            <!-- Кнопка 2: Текущий запрос -->
+            <button id="eval-current-btn"
+                    onclick="evaluateCurrentQuery()"
+                    class="flex-1 sm:flex-none px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition flex items-center justify-center gap-2 shadow-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                Протестировать этот вопрос
+            </button>
+        </div>
+
+        <!-- Лоадер -->
+        <div id="eval-loading" class="hidden mt-4 text-center text-indigo-600 bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+            <svg class="animate-spin h-5 w-5 mx-auto mb-2 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-sm font-medium">Запуск тестов... Это займет 10-30 секунд ⏳</p>
+        </div>
+
+        <!-- Контейнер для результатов -->
+        <div id="eval-results" class="mt-4 space-y-3"></div>
+    </div>
+
+    <!-- Скрипт для оценки -->
+    <script>
+    async function runEvaluation() {
+        const btn = document.getElementById('eval-btn');
+        const loading = document.getElementById('eval-loading');
+        const resultsDiv = document.getElementById('eval-results');
+
+        // Блокируем кнопку и показываем лоадер
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        loading.classList.remove('hidden');
+        resultsDiv.innerHTML = '';
+
+        try {
+            const response = await fetch('/api/run-eval-api/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                renderEvalResults(data.data);
+            } else {
+                resultsDiv.innerHTML = `<div class="p-3 bg-red-50 text-red-700 rounded-lg border border-red-200 text-sm">❌ Ошибка: ${data.message}</div>`;
+            }
+        } catch (error) {
+            resultsDiv.innerHTML = `<div class="p-3 bg-red-50 text-red-700 rounded-lg border border-red-200 text-sm">❌ Ошибка сети: ${error.message}</div>`;
+        } finally {
+            // Возвращаем кнопку в исходное состояние
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            loading.classList.add('hidden');
+        }
+    }
+
+    async function evaluateCurrentQuery() {
+        // Берем вопрос из поискового поля
+        const queryInput = document.querySelector('input[name="query"]');
+        const query = queryInput ? queryInput.value.trim() : '';
+
+        if (!query) {
+            alert('⚠️ Сначала введите вопрос в поле поиска!');
+            return;
+        }
+
+        const btn = document.getElementById('eval-current-btn');
+        const loading = document.getElementById('eval-loading');
+        const resultsDiv = document.getElementById('eval-results');
+
+        // Блокируем кнопку и показываем лоадер
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        loading.classList.remove('hidden');
+        loading.querySelector('p').textContent = 'Оценка текущего вопроса... ⏳';
+        resultsDiv.innerHTML = '';
+
+        try {
+            const response = await fetch('{% url "evaluate_current_query" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query: query })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                renderCurrentQueryResult(data);
+            } else {
+                resultsDiv.innerHTML = `<div class="p-3 bg-red-50 text-red-700 rounded-lg border border-red-200 text-sm">❌ Ошибка: ${data.error || data.message}</div>`;
+            }
+        } catch (error) {
+            resultsDiv.innerHTML = `<div class="p-3 bg-red-50 text-red-700 rounded-lg border border-red-200 text-sm">❌ Ошибка сети: ${error.message}</div>`;
+        } finally {
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            loading.classList.add('hidden');
+            loading.querySelector('p').textContent = 'Запуск тестов... Это займет 10-30 секунд ⏳';
+        }
+    }
+
+    function renderCurrentQueryResult(data) {
+        const container = document.getElementById('eval-results');
+
+        const percent = data.percent;
+        const colorClass = percent >= 75 ? 'bg-green-500' : percent >= 50 ? 'bg-yellow-500' : 'bg-red-500';
+        const textClass = percent >= 75 ? 'text-green-700 bg-green-50' : percent >= 50 ? 'text-yellow-700 bg-yellow-50' : 'text-red-700 bg-red-50';
+
+        let html = `
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="px-4 py-3 bg-emerald-50 border-b border-emerald-100">
+                <h3 class="font-semibold text-emerald-900 text-sm flex items-center gap-2">
+                    🎯 Результат проверки вопроса
+                </h3>
+            </div>
+            <div class="p-4 space-y-4">
+                <!-- Вопрос -->
+                <div>
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Вопрос:</div>
+                    <div class="text-gray-800 font-medium">${data.query}</div>
+                </div>
+
+                <!-- Оценка -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Качество ответа</span>
+                        <span class="text-sm font-bold px-2 py-0.5 rounded ${textClass}">${data.score}</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2">
+                        <div class="${colorClass} h-2 rounded-full transition-all duration-700" style="width: ${percent}%"></div>
+                    </div>
+                    ${data.keywords.length > 0 ? `
+                    <div class="mt-2 text-xs text-gray-500">
+                        Найдено ключевых слов: <span class="font-medium">${data.found_keywords.join(', ') || 'нет'}</span> из <span class="font-medium">${data.keywords.join(', ')}</span>
+                    </div>` : ''}
+                </div>
+
+                <!-- Ответ -->
+                <div>
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Ответ системы:</div>
+                    <div class="text-gray-700 text-sm leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100">${data.answer}</div>
+                </div>
+            </div>
+        </div>`;
+
+        container.innerHTML = html;
+    }
+
+    function renderEvalResults(results) {
+        const container = document.getElementById('eval-results');
+        let html = '<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">';
+        html += '<div class="px-4 py-3 bg-gray-50 border-b border-gray-100"><h3 class="font-semibold text-gray-800 text-sm">📊 Результаты тестов</h3></div>';
+        html += '<div class="divide-y divide-gray-100">';
+
+        results.forEach(r => {
+            const [score, total] = r.score.split('/').map(Number);
+            const percent = total > 0 ? (score / total) * 100 : 0;
+            const colorClass = percent >= 75 ? 'bg-green-500' : percent >= 50 ? 'bg-yellow-500' : 'bg-red-500';
+            const textClass = percent >= 75 ? 'text-green-700 bg-green-50' : percent >= 50 ? 'text-yellow-700 bg-yellow-50' : 'text-red-700 bg-red-50';
+
+            html += `
+            <div class="p-4 hover:bg-gray-50 transition">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="font-medium text-gray-800 text-sm">${r.question}</span>
+                    <span class="text-xs font-bold px-2 py-0.5 rounded ${textClass}">${r.score}</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-1.5 mb-2">
+                    <div class="${colorClass} h-1.5 rounded-full transition-all duration-700" style="width: ${percent}%"></div>
+                </div>
+                <p class="text-xs text-gray-500 line-clamp-2 leading-relaxed">${r.answer}</p>
+            </div>`;
+        });
+
+        html += '</div></div>';
+        container.innerHTML = html;
+    }
+
+    // Хелпер для CSRF токена (если еще нет в проекте)
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    </script>
+
     <!-- Footer / Admin actions -->
     <div class="bg-gray-100 p-4 text-center text-xs text-gray-500 border-t">
         <button hx-post="{% url 'admin_rebuild' %}"

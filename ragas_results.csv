@@ -1,0 +1,3 @@
+user_input,retrieved_contexts,response,reference,faithfulness,answer_relevancy
+Как создать DataFrame в pandas?,"[""DataFrame — это двумерная структура данных. Создание: pd.DataFrame({'A': [1, 2]})""]",Используйте pd.DataFrame() с словарем данных.,Для создания DataFrame используйте конструктор pd.DataFrame().,,
+Что такое n_estimators в RandomForest?,['n_estimators: The number of trees in the forest. Default is 100.'],Это количество деревьев в лесу.,Параметр n_estimators задает количество деревьев в ансамбле Random Forest.,,
