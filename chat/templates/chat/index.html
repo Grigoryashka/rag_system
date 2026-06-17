@@ -1,347 +1,169 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Python/ML Docs RAG</title>
-    <!-- Tailwind CSS -->
+    <title>RAG: Python & ML Docs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <style>
-        /* Кастомный скроллбар для красоты */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #555; }
-    </style>
+    <link rel="stylesheet" href="{% static 'chat/css/styles.css' %}">
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center py-10">
-
-<div class="w-full max-w-3xl bg-white rounded-xl shadow-lg overflow-hidden">
+<body>
     <!-- Header -->
-    <div class="bg-blue-600 p-6 text-white">
-        <h1 class="text-2xl font-bold">📚 RAG: Python & ML Docs</h1>
-        <p class="text-blue-100 text-sm mt-1">Локальный поиск по технической документации</p>
-    </div>
-
-    <!-- Search Area -->
-    <div class="p-6 border-b border-gray-200">
-        <form hx-post="{% url 'api_search' %}"
-              hx-target="#results-area"
-              hx-swap="innerHTML"
-              class="flex gap-2">
-            <input type="text"
-                   name="query"
-                   placeholder="Например: как использовать RandomForest..."
-                   class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                   required>
-            <button type="submit"
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 flex items-center">
-                <span>Найти</span>
-                <!-- Spinner для HTMX -->
-                <svg class="animate-spin ml-2 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" hx-indicator=".htmx-indicator">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </button>
-        </form>
-        <div class="htmx-indicator mt-2 text-center text-gray-500 text-sm">Поиск...</div>
-    </div>
-
-    <!-- Results Area -->
-    <div id="results-area" class="p-6 bg-gray-50 min-h-[300px]">
-        <div class="text-center text-gray-400 mt-10">
-            <p>Введите вопрос, чтобы начать поиск по базе знаний.</p>
+    <div class="max-w-6xl mx-auto px-6 mb-6">
+        <div class="glass-effect rounded-3xl p-8">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-gray-600 flex items-center justify-center shadow-lg flex-shrink-0">
+                    <span class="text-3xl">📚</span>
+                </div>
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-400 to-gray-400 bg-clip-text text-transparent">
+                        RAG: Python & ML Docs
+                    </h1>
+                    <p class="text-gray-400 text-lg mt-1">Локальный поиск по технической документации</p>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Панель оценки качества -->
-    <div class="border-t border-gray-200 mt-8 pt-6">
-        <div class="flex items-center justify-between mb-3">
-            <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide">🧪 Тестирование системы</h3>
+    <!-- Main Content -->
+    <div class="max-w-6xl mx-auto px-6 pb-12 space-y-6">
+
+        <!-- Search Section -->
+        <div class="glass-effect rounded-3xl p-8 search-container">
+            <form method="POST" action="{% url 'api_search' %}" class="search-form flex gap-3">
+                {% csrf_token %}
+                <div class="flex-1 relative">
+                    <input
+                        type="text"
+                        name="query"
+                        class="search-input w-full px-6 py-4 rounded-2xl text-lg"
+                        placeholder="Спроси что-нибудь о Python, ML, pandas..."
+                        autocomplete="off"
+                    >
+                    <div class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary px-8 py-4 rounded-2xl text-lg bg-gradient-to-r from-gray-500 to-red-400">
+                    Найти
+                </button>
+            </form>
+
+            <!-- Quick Tags -->
+            <div class="mt-4 flex flex-wrap gap-2">
+                <span class="text-sm text-gray-500 mr-2">Популярные:</span>
+                <button onclick="quickSearch('что такое DataFrame')" class="tag px-3 py-1.5 rounded-full text-sm">DataFrame</button>
+                <button onclick="quickSearch('RandomForest n_estimators')" class="tag px-3 py-1.5 rounded-full text-sm">RandomForest</button>
+                <button onclick="quickSearch('как создать нейросеть')" class="tag px-3 py-1.5 rounded-full text-sm">Нейросеть</button>
+            </div>
         </div>
 
-        <div class="flex flex-col sm:flex-row gap-3 mb-4">
-            <!-- Кнопка 1: Стандартные тесты -->
-            <button id="eval-btn"
-                    onclick="runEvaluation()"
-                    class="flex-1 sm:flex-none px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition flex items-center justify-center gap-2 shadow-sm">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                Стандартные тесты
-            </button>
+        <!-- Results Section -->
+        <div id="results-container" class="space-y-6">
+            {% if results %}
+            <div class="glass-effect rounded-3xl p-8 result-card">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-semibold">Ответ AI (RAG)</h2>
+                        <p class="text-sm text-gray-500">{{ query }}</p>
+                    </div>
+                </div>
 
-            <!-- Кнопка 2: Текущий запрос -->
-            <button id="eval-current-btn"
-                    onclick="evaluateCurrentQuery()"
-                    class="flex-1 sm:flex-none px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition flex items-center justify-center gap-2 shadow-sm">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                Протестировать этот вопрос
-            </button>
-
-            <!-- Кнопка 3: Очистить кэш ответов -->
-            <button onclick="clearAnswersCache()"
-                    class="flex-1 sm:flex-none px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition flex items-center justify-center gap-2 shadow-sm">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                Очистить кэш ответов
-            </button>
+                {% for result in results %}
+                <div class="bg-white/5 rounded-2xl p-6 border border-white/10 mb-4 last:mb-0">
+                    <div class="text-gray-300 leading-relaxed whitespace-pre-wrap">{{ result.content }}</div>
+                    {% if result.source %}
+                    <div class="mt-4 pt-4 border-t border-white/10">
+                        <span class="text-xs text-gray-500">Источник: {{ result.source }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="glass-effect rounded-3xl p-16 text-center empty-state">
+                <p class="text-lg">Здесь отобразятся результаты Вашего запроса... 💡</p>
+            </div>
+            {% endif %}
         </div>
 
-        <!-- Лоадер -->
-        <div id="eval-loading" class="hidden mt-4 text-center text-indigo-600 bg-indigo-50 p-3 rounded-lg border border-indigo-100">
-            <svg class="animate-spin h-5 w-5 mx-auto mb-2 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p class="text-sm font-medium">Запуск тестов... Это займет 10-30 секунд ⏳</p>
+        <!-- Testing Section -->
+        <div class="glass-effect rounded-3xl p-8">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold">Тестирование системы</h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <button id="eval-btn" onclick="runEvaluation()" class="test-btn px-6 py-4 rounded-2xl flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Стандартные тесты
+                </button>
+
+                <button id="eval-current-btn" onclick="evaluateCurrentQuery()" class="test-btn px-6 py-4 rounded-2xl flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    Протестировать вопрос
+                </button>
+
+                <button onclick="clearAnswersCache()" class="test-btn px-6 py-4 rounded-2xl flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    Очистить кэш
+                </button>
+            </div>
+
+            <!-- Loader -->
+            <div id="eval-loading" class="hidden mb-6">
+                <div class="flex items-center justify-center gap-3 p-6 bg-white/5 rounded-2xl border border-white/10">
+                    <div class="loading-spinner"></div>
+                    <p class="text-gray-400">Анализирую...</p>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div id="eval-results" class="space-y-4"></div>
         </div>
 
-        <!-- Контейнер для результатов -->
-        <div id="eval-results" class="mt-4 space-y-3"></div>
+        <!-- Footer -->
+        <div class="footer rounded-2xl p-6 mt-8">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
+                <p>Локальная LLM • FAISS • Django</p>
+                <button onclick="rebuildIndex()" class="rebuild-btn px-4 py-2 rounded-xl transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    Пересобрать индекс
+                </button>
+            </div>
+        </div>
     </div>
 
-    <!-- Скрипт для оценки -->
+    <script src="{% static 'chat/js/scripts.js' %}"></script>
     <script>
-    async function runEvaluation() {
-        const btn = document.getElementById('eval-btn');
-        const loading = document.getElementById('eval-loading');
-        const resultsDiv = document.getElementById('eval-results');
-
-        // Блокируем кнопку и показываем лоадер
-        btn.disabled = true;
-        btn.classList.add('opacity-50', 'cursor-not-allowed');
-        loading.classList.remove('hidden');
-        resultsDiv.innerHTML = '';
-
-        try {
-            const response = await fetch('/api/run-eval-api/', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken'),
-                    'Content-Type': 'application/json'
-                }
-            });
-            const data = await response.json();
-
-            if (data.status === 'success') {
-                renderEvalResults(data.data);
-            } else {
-                resultsDiv.innerHTML = `<div class="p-3 bg-red-50 text-red-700 rounded-lg border border-red-200 text-sm">❌ Ошибка: ${data.message}</div>`;
-            }
-        } catch (error) {
-            resultsDiv.innerHTML = `<div class="p-3 bg-red-50 text-red-700 rounded-lg border border-red-200 text-sm">❌ Ошибка сети: ${error.message}</div>`;
-        } finally {
-            // Возвращаем кнопку в исходное состояние
-            btn.disabled = false;
-            btn.classList.remove('opacity-50', 'cursor-not-allowed');
-            loading.classList.add('hidden');
+        function quickSearch(query) {
+            document.querySelector('input[name="query"]').value = query;
+            document.querySelector('form').submit();
         }
-    }
-
-    async function evaluateCurrentQuery() {
-        // Берем вопрос из поискового поля
-        const queryInput = document.querySelector('input[name="query"]');
-        const query = queryInput ? queryInput.value.trim() : '';
-
-        if (!query) {
-            alert('⚠️ Сначала введите вопрос в поле поиска!');
-            return;
-        }
-
-        const btn = document.getElementById('eval-current-btn');
-        const loading = document.getElementById('eval-loading');
-        const resultsDiv = document.getElementById('eval-results');
-
-        // Блокируем кнопку и показываем лоадер
-        btn.disabled = true;
-        btn.classList.add('opacity-50', 'cursor-not-allowed');
-        loading.classList.remove('hidden');
-        loading.querySelector('p').textContent = 'Оценка текущего вопроса... ⏳';
-        resultsDiv.innerHTML = '';
-
-        try {
-            const response = await fetch('{% url "evaluate_current_query" %}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken'),
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ query: query })
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                renderCurrentQueryResult(data);
-            } else {
-                resultsDiv.innerHTML = `<div class="p-3 bg-red-50 text-red-700 rounded-lg border border-red-200 text-sm">❌ Ошибка: ${data.error || data.message}</div>`;
-            }
-        } catch (error) {
-            resultsDiv.innerHTML = `<div class="p-3 bg-red-50 text-red-700 rounded-lg border border-red-200 text-sm">❌ Ошибка сети: ${error.message}</div>`;
-        } finally {
-            btn.disabled = false;
-            btn.classList.remove('opacity-50', 'cursor-not-allowed');
-            loading.classList.add('hidden');
-            loading.querySelector('p').textContent = 'Запуск тестов... Это займет 10-30 секунд ⏳';
-        }
-    }
-
-    function renderCurrentQueryResult(data) {
-        const container = document.getElementById('eval-results');
-
-        const percent = data.percent;
-        const colorClass = percent >= 75 ? 'bg-green-500' : percent >= 50 ? 'bg-yellow-500' : 'bg-red-500';
-        const textClass = percent >= 75 ? 'text-green-700 bg-green-50' : percent >= 50 ? 'text-yellow-700 bg-yellow-50' : 'text-red-700 bg-red-50';
-
-        let html = `
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div class="px-4 py-3 bg-emerald-50 border-b border-emerald-100">
-                <h3 class="font-semibold text-emerald-900 text-sm flex items-center gap-2">
-                    🎯 Результат проверки вопроса
-                </h3>
-            </div>
-            <div class="p-4 space-y-4">
-                <!-- Вопрос -->
-                <div>
-                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Вопрос:</div>
-                    <div class="text-gray-800 font-medium">${data.query}</div>
-                </div>
-
-                <!-- Оценка -->
-                <div>
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Качество ответа</span>
-                        <span class="text-sm font-bold px-2 py-0.5 rounded ${textClass}">${data.score}</span>
-                    </div>
-                    <div class="w-full bg-gray-100 rounded-full h-2">
-                        <div class="${colorClass} h-2 rounded-full transition-all duration-700" style="width: ${percent}%"></div>
-                    </div>
-                    ${data.keywords.length > 0 ? `
-                    <div class="mt-2 text-xs text-gray-500">
-                        Найдено ключевых слов: <span class="font-medium">${data.found_keywords.join(', ') || 'нет'}</span> из <span class="font-medium">${data.keywords.join(', ')}</span>
-                    </div>` : ''}
-                </div>
-
-                <!-- Ответ -->
-                <div>
-                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Ответ системы:</div>
-                    <div class="text-gray-700 text-sm leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100">${data.answer}</div>
-                </div>
-            </div>
-        </div>`;
-
-        container.innerHTML = html;
-    }
-
-    function renderEvalResults(results) {
-        const container = document.getElementById('eval-results');
-        let html = '<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">';
-        html += '<div class="px-4 py-3 bg-gray-50 border-b border-gray-100"><h3 class="font-semibold text-gray-800 text-sm">📊 Результаты тестов</h3></div>';
-        html += '<div class="divide-y divide-gray-100">';
-
-        results.forEach(r => {
-            const [score, total] = r.score.split('/').map(Number);
-            const percent = total > 0 ? (score / total) * 100 : 0;
-            const colorClass = percent >= 75 ? 'bg-green-500' : percent >= 50 ? 'bg-yellow-500' : 'bg-red-500';
-            const textClass = percent >= 75 ? 'text-green-700 bg-green-50' : percent >= 50 ? 'text-yellow-700 bg-yellow-50' : 'text-red-700 bg-red-50';
-
-            html += `
-            <div class="p-4 hover:bg-gray-50 transition">
-                <div class="flex justify-between items-center mb-2">
-                    <span class="font-medium text-gray-800 text-sm">${r.question}</span>
-                    <span class="text-xs font-bold px-2 py-0.5 rounded ${textClass}">${r.score}</span>
-                </div>
-                <div class="w-full bg-gray-100 rounded-full h-1.5 mb-2">
-                    <div class="${colorClass} h-1.5 rounded-full transition-all duration-700" style="width: ${percent}%"></div>
-                </div>
-                <p class="text-xs text-gray-500 line-clamp-2 leading-relaxed">${r.answer}</p>
-            </div>`;
-        });
-
-        html += '</div></div>';
-        container.innerHTML = html;
-    }
-
-    async function clearAnswersCache() {
-        if (!confirm('Очистить кэш ответов? Все сохранённые ответы будут удалены.')) {
-            return;
-        }
-
-        try {
-            const response = await fetch('/api/clear-cache/', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken'),
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                alert('✅ Кэш очищен!');
-            } else {
-                alert(' Ошибка: ' + data.message);
-            }
-        } catch (error) {
-            alert('❌ Ошибка сети: ' + error.message);
-        }
-    }
-
-    // Хелпер для CSRF токена (если еще нет в проекте)
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
     </script>
-
-    <!-- Footer / Admin actions -->
-    <div class="bg-gray-100 p-4 text-center text-xs text-gray-500 border-t">
-        <button hx-post="{% url 'admin_rebuild' %}"
-                hx-confirm="Пересобрать базу? Это займет время."
-                class="hover:text-blue-600 underline">
-            Пересобрать индекс (Admin)
-        </button>
-    </div>
-</div>
-
-<!-- Вставь это в index.html -->
-<script>
-    document.body.addEventListener('htmx:configRequest', (event) => {
-        // Получаем CSRF токен из cookies
-        const csrfToken = getCookie('csrftoken');
-        if (csrfToken) {
-            // Добавляем его в заголовки запроса
-            event.detail.headers['X-CSRFToken'] = csrfToken;
-        }
-    });
-
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                // Ищем cookie с именем csrftoken
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-</script>
-
 </body>
 </html>
