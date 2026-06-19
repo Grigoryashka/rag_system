@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST, require_GET
 from .services import generate_rag_answer, create_vector_store
 from .vector_store_cache import create_vector_store, reset_cache
 from .cache import answers_cache
@@ -13,16 +14,24 @@ def index(request):
 
 @require_POST
 def api_search(request):
-    query = request.POST.get('query', '').strip()
-    if not query:
-        return JsonResponse({"error": "Пустой запрос"}, status=400)
+    """API endpoint для поиска (возвращает JSON)"""
+    if request.method == 'POST':
+        query = request.POST.get('query')
 
-    answer = generate_rag_answer(query)
+        if not query:
+            return JsonResponse({'error': 'Пустой запрос'}, status=400)
 
-    return render(request, 'chat/_results.html', {
-        'results': [{"content": answer, "source": "AI Generated"}],
-        'query': query
-    })
+        try:
+            answer = generate_rag_answer(query)
+            return JsonResponse({
+                'success': True,
+                'answer': answer,
+                'query': query
+            })
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Только POST'}, status=405)
 
 
 @require_POST
@@ -89,3 +98,41 @@ def clear_cache(request):
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
+@require_GET
+def show_metrics(request):
+    """Показать метрики"""
+    from .services import get_metrics_log
+    metrics = get_metrics_log()
+
+    return JsonResponse({
+        'total_queries': len(metrics),
+        'metrics': [
+            {
+                'query': m.query,
+                'search_ms': round(m.search_time_ms),
+                'docs': m.num_docs_found,
+                'llm_ms': round(m.llm_time_ms),
+                'total_ms': round(m.total_time_ms),
+                'memory_mb': round(m.memory_mb, 1)
+            }
+            for m in metrics[-20:]  # Последние 20
+        ]
+    })
+
+
+@csrf_exempt
+@require_POST
+def run_ragas_eval_api(request):
+    """Запуск RAGAS оценки"""
+    try:
+        from .ragas_eval import run_ragas_evaluation
+        result = run_ragas_evaluation()
+
+        return JsonResponse({
+            'success': True,
+            'metrics': result,
+            'faithfulness': result.get('faithfulness', 0),
+            'answer_relevancy': result.get('answer_relevancy', 0)
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

@@ -14,6 +14,100 @@ function getCookie(name) {
     return cookieValue;
 }
 
+// Добавь обработку формы
+document.addEventListener('DOMContentLoaded', function() {
+    const searchForm = document.querySelector('form[method="POST"]');
+    const searchInput = document.querySelector('input[name="query"]');
+    const resultsContainer = document.getElementById('results-container');
+
+    if (searchForm) {
+        searchForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            // Показываем лоадер
+            if (resultsContainer) {
+                resultsContainer.innerHTML = `
+                    <div class="glass-effect rounded-3xl p-8">
+                        <div class="flex items-center justify-center gap-3">
+                            <div class="loading-spinner"></div>
+                            <p class="text-gray-400">Ищу информацию...</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            try {
+                const formData = new FormData(searchForm);
+                const response = await fetch('/api/search/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Отображаем результат
+                    displayResult(data.query, data.answer);
+                } else {
+                    alert('Ошибка: ' + data.error);
+                }
+            } catch (error) {
+                alert('Ошибка сети: ' + error.message);
+            }
+        });
+    }
+});
+
+function displayResult(query, answer) {
+    const resultsContainer = document.getElementById('results-container');
+    if (!resultsContainer) return;
+
+    const html = `
+        <div class="glass-effect rounded-3xl p-8 result-card">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-semibold">Ответ AI (RAG)</h2>
+                    <p class="text-sm text-gray-500">${query}</p>
+                </div>
+            </div>
+
+            <div class="bg-white/5 rounded-2xl p-6 border border-white/10">
+                <div class="text-gray-300 leading-relaxed whitespace-pre-wrap">${answer}</div>
+            </div>
+
+            <div class="mt-6 flex gap-3">
+                <button onclick="copyAnswer('${answer.replace(/'/g, "\\'")}')"
+                        class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition">
+                    📋 Копировать
+                </button>
+                <button onclick="location.reload()"
+                        class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition">
+                🔄 Новый вопрос
+                </button>
+            </div>
+        </div>
+    `;
+
+    resultsContainer.innerHTML = html;
+}
+
+function copyAnswer(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Скопировано!');
+    });
+}
+
 // Стандартные тесты
 async function runEvaluation() {
     const btn = document.getElementById('eval-btn');
@@ -237,4 +331,155 @@ async function rebuildIndex() {
         btn.disabled = false;
         btn.innerHTML = originalContent;
     }
+}
+
+// Обработка формы поиска
+document.addEventListener('DOMContentLoaded', function() {
+    const searchForm = document.querySelector('form[action*="api/search"]');
+    const searchInput = document.querySelector('input[name="query"]');
+    const resultsContainer = document.getElementById('results-container');
+
+    if (searchForm) {
+        searchForm.addEventListener('submit', async function(e) {
+            e.preventDefault(); // Отменяем стандартную отправку
+
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            // Показываем лоадер
+            if (resultsContainer) {
+                resultsContainer.innerHTML = `
+                    <div class="glass-effect rounded-3xl p-8">
+                        <div class="flex items-center justify-center gap-3">
+                            <div class="loading-spinner"></div>
+                            <p class="text-gray-400">🔍 Ищу информацию...</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            try {
+                const formData = new FormData(searchForm);
+                const response = await fetch('/api/search/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Отображаем результат
+                    displayResult(data.query, data.answer);
+                } else {
+                    showError(data.error || 'Ошибка при поиске');
+                }
+            } catch (error) {
+                showError('Ошибка сети: ' + error.message);
+            }
+        });
+    }
+});
+
+function displayResult(query, answer) {
+    const resultsContainer = document.getElementById('results-container');
+    if (!resultsContainer) return;
+
+    const html = `
+        <div class="glass-effect rounded-3xl p-8 result-card">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-semibold text-white">💡 Ответ AI (RAG)</h2>
+                    <p class="text-sm text-gray-400 mt-1">${escapeHtml(query)}</p>
+                </div>
+            </div>
+
+            <div class="bg-white/5 rounded-2xl p-6 border border-white/10">
+                <div class="text-gray-300 leading-relaxed whitespace-pre-wrap">${escapeHtml(answer)}</div>
+            </div>
+
+            <div class="mt-6 flex gap-3">
+                <button onclick="copyToClipboard('${escapeHtml(answer).replace(/'/g, "\\'")}')"
+                        class="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white transition flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                    Копировать ответ
+                </button>
+                <button onclick="clearSearch()"
+                        class="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white transition flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    Новый вопрос
+                </button>
+            </div>
+        </div>
+    `;
+
+    resultsContainer.innerHTML = html;
+
+    // Плавная прокрутка к результатам
+    resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function showError(message) {
+    const resultsContainer = document.getElementById('results-container');
+    if (!resultsContainer) return;
+
+    resultsContainer.innerHTML = `
+        <div class="glass-effect rounded-3xl p-8">
+            <div class="flex items-center gap-3 text-red-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <p>${escapeHtml(message)}</p>
+            </div>
+        </div>
+    `;
+}
+
+function clearSearch() {
+    const searchInput = document.querySelector('input[name="query"]');
+    const resultsContainer = document.getElementById('results-container');
+
+    if (searchInput) searchInput.value = '';
+    if (resultsContainer) {
+        resultsContainer.innerHTML = `
+            <div class="glass-effect rounded-3xl p-16 text-center empty-state">
+                <div class="empty-state-icon mb-4" style="font-size: 4rem; opacity: 0.5;">🔍</div>
+                <p class="text-lg text-gray-400">Введите вопрос, чтобы начать поиск</p>
+            </div>
+        `;
+    }
+}
+
+function copyToClipboard(text) {
+    // Убираем HTML теги и экранирование
+    const cleanText = text.replace(/<[^>]*>/g, '').replace(/\\n/g, '\n');
+
+    navigator.clipboard.writeText(cleanText).then(() => {
+        // Показываем временное уведомление
+        const btn = event.target.closest('button');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '✅ Скопировано!';
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+        }, 2000);
+    }).catch(err => {
+        alert('Не удалось скопировать: ' + err);
+    });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }

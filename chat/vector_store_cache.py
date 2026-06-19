@@ -3,10 +3,17 @@
 """
 import os
 from pathlib import Path
+
+import faiss
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
+from .etl_pipeline import DocumentETLPipeline
+import torch
+
+from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+DOCS_DIR = BASE_DIR / "docs"
 DB_DIR = BASE_DIR / "db"
 EMBEDDING_MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
@@ -16,14 +23,31 @@ _vector_db = None
 
 
 def get_embeddings():
-    """
-    Возвращает модель эмбеддингов (загружается один раз)
-    """
+    """Загружает модель эмбеддингов с явным указанием устройства"""
     global _embeddings
+
     if _embeddings is None:
-        print("⏳ Загрузка модели эмбеддингов в память...")
-        _embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME)
-        print("✅ Модель эмбеддингов загружена")
+        print("⏳ Загрузка модели эмбеддингов...")
+
+        try:
+            _embeddings = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+                model_kwargs={
+                    'device': 'cpu',  # ← Явно указываем CPU
+                },
+                encode_kwargs={
+                    'normalize_embeddings': True
+                }
+            )
+            print("✅ Модель загружена на CPU")
+        except Exception as e:
+            print(f"❌ Ошибка загрузки модели: {e}")
+            # Фоллбэк: пробуем без torch_dtype
+            _embeddings = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+                model_kwargs={'device': 'cpu'}
+            )
+
     return _embeddings
 
 
@@ -62,42 +86,88 @@ def reset_cache():
 
 def create_vector_store():
     """
-    Создаёт новую FAISS базу из документов
+    Создаёт FAISS базу используя Big Data ETL pipeline
     """
-    from langchain_community.document_loaders import DirectoryLoader, TextLoader
+    global _vector_db
+
+    from .etl_pipeline import DocumentETLPipeline
+
+    print("\n" + "=" * 60)
+    print("🚀 СОЗДАНИЕ FAISS БАЗЫ С ETL PIPELINE")
+    print("=" * 60)
+
+    # 1. Запуск ETL Pipeline
+    print("\n📥 Этап 1: Запуск ETL Pipeline...")
+    pipeline = DocumentETLPipeline(num_workers=2)
+
+    # Получаем список файлов
+    file_paths = [str(f) for f in DOCS_DIR.glob("**/*.txt")]
+
+    if not file_paths:
+        print("❌ Не найдено файлов в", DOCS_DIR)
+        return None
+
+    print(f"📄 Найдено файлов: {len(file_paths)}")
+
+    # Запускаем ETL
+    df = pipeline.run(file_paths)
+    pipeline.close()
+
+    print(f"✅ ETL завершён: обработано {len(df)} чанков")
+
+    # 2. Конвертация DataFrame в LangChain документы
+    print("\n📝 Этап 2: Создание LangChain документов...")
+    from langchain_core.documents import Document
+
+    documents = []
+    for _, row in df.iterrows():
+        doc = Document(
+            page_content=row['text'],
+            metadata={
+                'source': row['filepath'],
+                'category': row.get('category', 'unknown')
+            }
+        )
+        documents.append(doc)
+
+    print(f"✅ Создано {len(documents)} документов")
+
+    # 3. Дополнительный чанкинг (если нужно)
+    print("\n✂️ Этап 3: Дополнительный чанкинг...")
     from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-    DOCS_DIR = BASE_DIR / "docs"
-
-    if not DOCS_DIR.exists():
-        raise FileNotFoundError(f"Папка {DOCS_DIR} не найдена.")
-
-    print("📚 Загрузка документов...")
-    loader = DirectoryLoader(
-        str(DOCS_DIR),
-        glob="**/*.txt",
-        loader_cls=lambda path: TextLoader(path, encoding="utf-8")
-    )
-    documents = loader.load()
-
-    print("️ Разбиение на чанки...")
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50
+        chunk_size=1000,
+        chunk_overlap=200,
+        separators=["\n\n", "\n", ". ", " ", ""]
     )
-    texts = text_splitter.split_documents(documents)
 
-    print("🔢 Создание эмбеддингов...")
+    texts = text_splitter.split_documents(documents)
+    print(f"✅ После чанкинга: {len(texts)} фрагментов")
+
+    # 4. Создание эмбеддингов и FAISS
+    print("\n🔢 Этап 4: Создание эмбеддингов и FAISS индекса...")
     embeddings = get_embeddings()
+
+    # Создаём FAISS
     db = FAISS.from_documents(texts, embeddings)
 
-    print("💾 Сохранение базы...")
+    # 5. Сохранение на диск
+    print("\n💾 Этап 5: Сохранение базы на диск...")
     DB_DIR.mkdir(exist_ok=True)
     db.save_local(str(DB_DIR))
 
-    # Обновляем кэш
-    global _vector_db
+    print(f"✅ База сохранена в {DB_DIR}")
+
+    # Обновляем глобальную переменную
     _vector_db = db
 
-    print(f"✅ База создана и сохранена в {DB_DIR}")
+    print("\n" + "=" * 60)
+    print("✅ FAISS БАЗА УСПЕШНО СОЗДАНА")
+    print("=" * 60)
+    print(f"  📊 Всего чанков: {len(texts)}")
+    print(f"  📁 Исходных файлов: {len(file_paths)}")
+    print(f"  💾 Размер базы: {sum(f.stat().st_size for f in DB_DIR.iterdir()) / 1024:.1f} KB")
+    print("=" * 60 + "\n")
+
     return db
