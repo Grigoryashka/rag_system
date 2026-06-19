@@ -1,6 +1,6 @@
 """
-Big Data Style ETL Pipeline для обработки документов
-Используем: unstructured + Dask для параллельной обработки
+ETL Pipeline для обработки документов
+unstructured + Dask для параллельной обработки
 """
 from unstructured.partition.auto import partition
 from unstructured.cleaners.core import clean, group_broken_paragraphs
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class DocumentETLPipeline:
-    """ETL конвейер в стиле Big Data"""
+    #ETL конвейер в стиле Big Data
 
     def __init__(self, num_workers: int = 2):
         self.num_workers = num_workers

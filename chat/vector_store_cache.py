@@ -150,7 +150,8 @@ def create_vector_store():
     embeddings = get_embeddings()
 
     # Создаём FAISS
-    db = FAISS.from_documents(texts, embeddings)
+    index = faiss.IndexFlatIP(384)  # <--- ВОТ ОНО, 384!
+    db = FAISS.from_documents(texts, embeddings, index=index)
 
     # 5. Сохранение на диск
     print("\n💾 Этап 5: Сохранение базы на диск...")
